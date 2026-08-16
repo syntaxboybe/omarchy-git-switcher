@@ -88,7 +88,6 @@ BarWidget {
       'git config --global user.name "$1" && git config --global user.email "$2"',
       "git-switcher", name, email]
     switchProc.running = true
-    card.open = false
   }
 
   // ----- processes -----
@@ -192,11 +191,91 @@ BarWidget {
         }
       }
 
+      // active account
+      Column {
+        width: parent.width
+        visible: root.currentName !== ""
+        spacing: Style.space(6)
+
+        Text {
+          width: parent.width
+          text: "Active account"
+          color: card.dim
+          font.family: root.bar ? root.bar.fontFamily : "monospace"
+          font.pixelSize: Style.font.caption
+        }
+
+        Rectangle {
+          width: parent.width
+          implicitHeight: Math.max(48,
+            activeName.implicitHeight
+            + (root.currentEmail !== "" ? activeEmail.implicitHeight + Style.space(2) : 0)
+            + Style.space(16))
+          radius: Style.cornerRadius
+          color: Style.selectedAccentFill
+          border.width: Style.spacing.hairline
+          border.color: "transparent"
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: Style.space(12)
+            anchors.rightMargin: Style.space(12)
+            anchors.topMargin: Style.space(8)
+            anchors.bottomMargin: Style.space(8)
+            spacing: Style.space(8)
+
+            Rectangle {
+              Layout.alignment: Qt.AlignVCenter
+              Layout.preferredWidth: Style.space(8)
+              Layout.preferredHeight: Style.space(8)
+              radius: Style.space(4)
+              color: "#4ade80"
+            }
+
+            Text {
+              Layout.alignment: Qt.AlignVCenter
+              text: "\uDB80\uDC04" // md-account (U+F0004)
+              color: card.fg
+              font.family: root.bar ? root.bar.fontFamily : "monospace"
+              font.pixelSize: Style.font.heading
+            }
+
+            Column {
+              Layout.fillWidth: true
+              spacing: Style.space(2)
+
+              Text {
+                id: activeName
+                width: parent.width
+                text: (root.currentLabel !== "" ? root.currentLabel : root.currentName)
+                  + (root.currentLabel !== "" && root.currentName !== ""
+                    ? " (" + root.currentName + ")" : "")
+                color: card.fg
+                font.family: root.bar ? root.bar.fontFamily : "monospace"
+                font.pixelSize: Style.font.body
+                elide: Text.ElideRight
+              }
+
+              Text {
+                id: activeEmail
+                width: parent.width
+                visible: root.currentEmail !== ""
+                text: root.currentEmail
+                color: card.dim
+                font.family: root.bar ? root.bar.fontFamily : "monospace"
+                font.pixelSize: Style.font.caption
+                elide: Text.ElideRight
+              }
+            }
+          }
+        }
+      }
+
+      // fallback when no identity is set
       Text {
         width: parent.width
-        text: root.currentName !== ""
-          ? "Active: " + root.currentName + (root.currentEmail !== "" ? " <" + root.currentEmail + ">" : "")
-          : "No global identity set"
+        visible: root.currentName === ""
+        text: "No global identity set"
         color: card.dim
         font.family: root.bar ? root.bar.fontFamily : "monospace"
         font.pixelSize: Style.font.caption
