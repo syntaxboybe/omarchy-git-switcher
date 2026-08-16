@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "syntaxboybe.git-switcher",
+  "name": "Git Switcher",
+  "version": "1.0.0",
+  "author": "syntaxboybe",
+  "license": "MIT",
+  "description": "View and switch between Git identities (user.name / user.email) from the bar.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "Widget.qml" },
+  "barWidget": {
+    "displayName": "Git Switcher",
+    "description": "Switch the global Git user.name / user.email",
+    "category": "Developer Tools",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
