@@ -4,6 +4,10 @@ View and switch between Git identities from the Omarchy bar. One icon — click
 it, pick the account, and the global `user.name` / `user.email` update
 instantly.
 
+## Screenshot
+
+![Git Switcher panel](screenshot.png)
+
 ## Requirements
 
 - [`git`](https://git-scm.com/) on `PATH`.
