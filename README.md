@@ -6,7 +6,7 @@ instantly.
 
 ## Screenshot
 
-![Git Switcher panel](screenshot.png)
+![Git Switcher panel](preview.png)
 
 ## Requirements
 
