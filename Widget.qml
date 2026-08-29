@@ -19,6 +19,10 @@ BarWidget {
   property string currentName: ""
   property string currentEmail: ""
   property string currentLabel: ""
+  property string currentVersion: "1.0.0"
+  property string remoteVersion: ""
+  property bool updateAvailable: false
+  property bool isUpdating: false
 
   // Panel lifecycle contract for shell summon/hide/toggle routing.
   readonly property bool opened: card.open
@@ -31,6 +35,17 @@ BarWidget {
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
+
+  function checkForUpdates() {
+    if (!updateCheckProc.running) updateCheckProc.running = true
+  }
+
+  function triggerUpdate() {
+    if (!updateProc.running) {
+      root.isUpdating = true
+      updateProc.running = true
+    }
+  }
 
   // ----- accounts (config file) -----
   function loadAccounts() {
@@ -65,6 +80,7 @@ BarWidget {
   function refresh() {
     root.loadAccounts()
     identityProc.running = true
+    root.checkForUpdates()
   }
 
   function matchActive() {
@@ -121,6 +137,41 @@ BarWidget {
     }
     onExited: function(exitCode, exitStatus) {
       root.parseAccounts(accountsOut.text)
+    }
+  }
+
+  // ----- update processes -----
+  Process {
+    id: updateCheckProc
+    command: ["curl", "-s", "-m", "5", "https://raw.githubusercontent.com/syntaxboybe/omarchy-git-switcher/main/manifest.json"]
+    stdout: StdioCollector {
+      id: checkOut
+      waitForEnd: true
+    }
+    onExited: function(code) {
+      if (code === 0 && checkOut.text.trim() !== "") {
+        try {
+          var data = JSON.parse(checkOut.text)
+          if (data && data.version) {
+            root.remoteVersion = String(data.version).trim()
+            if (root.remoteVersion !== "" && root.remoteVersion !== root.currentVersion) {
+              root.updateAvailable = true
+            }
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  Process {
+    id: updateProc
+    command: ["omarchy", "plugin", "update", "syntaxboybe.git-switcher", "--yes"]
+    onExited: function(code) {
+      root.isUpdating = false
+      if (code === 0) {
+        root.updateAvailable = false
+        if (root.bar) root.bar.run("omarchy restart shell")
+      }
     }
   }
 
@@ -209,6 +260,72 @@ BarWidget {
             font.family: root.bar ? root.bar.fontFamily : "monospace"
             font.pixelSize: Style.font.caption - 1
             font.bold: true
+          }
+        }
+      }
+
+      // update awareness banner
+      Rectangle {
+        width: parent.width
+        visible: root.updateAvailable
+        implicitHeight: Style.space(42)
+        radius: Style.cornerRadius
+        color: Qt.rgba(0.95, 0.6, 0.1, 0.15)
+        border.width: 1
+        border.color: "#f59e0b"
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.leftMargin: Style.space(12)
+          anchors.rightMargin: Style.space(12)
+          spacing: Style.space(8)
+
+          Text {
+            text: "🚀"
+            font.pixelSize: Style.font.body
+          }
+
+          Column {
+            Layout.fillWidth: true
+            spacing: Style.space(1)
+
+            Text {
+              text: "Update Available: v" + root.remoteVersion
+              color: "#fbbf24"
+              font.family: root.bar ? root.bar.fontFamily : "monospace"
+              font.pixelSize: Style.font.bodySmall
+              font.bold: true
+            }
+
+            Text {
+              text: "Current: v" + root.currentVersion
+              color: card.dim
+              font.family: root.bar ? root.bar.fontFamily : "monospace"
+              font.pixelSize: Style.font.caption
+            }
+          }
+
+          Rectangle {
+            implicitWidth: updateBtnText.implicitWidth + Style.space(16)
+            implicitHeight: Style.space(26)
+            radius: Style.space(6)
+            color: updateHover.containsMouse ? "#d97706" : "#f59e0b"
+
+            Text {
+              id: updateBtnText
+              anchors.centerIn: parent
+              text: root.isUpdating ? "Updating..." : "Update Now"
+              color: "#ffffff"
+              font.family: root.bar ? root.bar.fontFamily : "monospace"
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
+
+            HoverHandler { id: updateHover }
+            MouseArea {
+              anchors.fill: parent
+              onClicked: root.triggerUpdate()
+            }
           }
         }
       }
