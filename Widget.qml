@@ -159,62 +159,86 @@ BarWidget {
     anchorItem: button
     bar: root.bar
     owner: root
-    contentWidth: Style.space(320)
-    contentHeight: Style.space(320)
+    contentWidth: Style.space(330)
+    contentHeight: Style.space(340)
 
     readonly property color fg: root.bar ? root.bar.foreground : Color.foreground
     readonly property color dim: Color.muted
 
     Column {
       anchors.fill: parent
-      spacing: Style.space(10)
+      spacing: Style.space(12)
 
-      Row {
+      RowLayout {
         width: parent.width
         spacing: Style.space(8)
 
         Text {
           text: "\uDB80\uDEA2" // md-git (U+F02A2)
-          color: card.fg
+          color: "#60a5fa"
           font.family: root.bar ? root.bar.fontFamily : "monospace"
           font.pixelSize: Style.font.title
-          anchors.verticalCenter: parent.verticalCenter
+          Layout.alignment: Qt.AlignVCenter
         }
 
         Text {
-          width: parent.width
+          Layout.fillWidth: true
           text: "Git Accounts"
           color: card.fg
           font.family: root.bar ? root.bar.fontFamily : "monospace"
           font.pixelSize: Style.font.title
+          font.bold: true
           elide: Text.ElideRight
+          Layout.alignment: Qt.AlignVCenter
+        }
+
+        Rectangle {
+          Layout.alignment: Qt.AlignVCenter
+          implicitWidth: countText.implicitWidth + Style.space(12)
+          implicitHeight: Style.space(20)
+          radius: Style.space(10)
+          color: Qt.rgba(0.38, 0.65, 0.98, 0.15)
+          border.width: 1
+          border.color: "#60a5fa"
+
+          Text {
+            id: countText
+            anchors.centerIn: parent
+            text: root.accounts.length + (root.accounts.length === 1 ? " ACCOUNT" : " ACCOUNTS")
+            color: "#60a5fa"
+            font.family: root.bar ? root.bar.fontFamily : "monospace"
+            font.pixelSize: Style.font.caption - 1
+            font.bold: true
+          }
         }
       }
 
-      // active account
+      // active account hero banner
       Column {
         width: parent.width
         visible: root.currentName !== ""
-        spacing: Style.space(6)
+        spacing: Style.space(4)
 
         Text {
           width: parent.width
-          text: "Active account"
+          text: "ACTIVE ACCOUNT"
           color: card.dim
           font.family: root.bar ? root.bar.fontFamily : "monospace"
           font.pixelSize: Style.font.caption
+          font.bold: true
+          font.letterSpacing: 1.1
         }
 
         Rectangle {
           width: parent.width
-          implicitHeight: Math.max(48,
+          implicitHeight: Math.max(54,
             activeName.implicitHeight
             + (root.currentEmail !== "" ? activeEmail.implicitHeight + Style.space(2) : 0)
-            + Style.space(16))
-          radius: Style.cornerRadius
-          color: Style.selectedAccentFill
-          border.width: Style.spacing.hairline
-          border.color: "transparent"
+            + Style.space(18))
+          radius: Style.cornerRadius + 2
+          color: Qt.rgba(0.2, 0.6, 1.0, 0.08)
+          border.width: 1
+          border.color: Qt.rgba(0.2, 0.6, 1.0, 0.35)
 
           RowLayout {
             anchors.fill: parent
@@ -222,22 +246,25 @@ BarWidget {
             anchors.rightMargin: Style.space(12)
             anchors.topMargin: Style.space(8)
             anchors.bottomMargin: Style.space(8)
-            spacing: Style.space(8)
+            spacing: Style.space(10)
 
+            // Glowing indicator icon
             Rectangle {
               Layout.alignment: Qt.AlignVCenter
-              Layout.preferredWidth: Style.space(8)
-              Layout.preferredHeight: Style.space(8)
-              radius: Style.space(4)
-              color: "#4ade80"
-            }
+              Layout.preferredWidth: Style.space(32)
+              Layout.preferredHeight: Style.space(32)
+              radius: Style.space(16)
+              color: Qt.rgba(0.2, 0.8, 0.4, 0.15)
+              border.width: 1
+              border.color: "#4ade80"
 
-            Text {
-              Layout.alignment: Qt.AlignVCenter
-              text: "\uDB80\uDC04" // md-account (U+F0004)
-              color: card.fg
-              font.family: root.bar ? root.bar.fontFamily : "monospace"
-              font.pixelSize: Style.font.heading
+              Text {
+                anchors.centerIn: parent
+                text: "\uDB80\uDC04" // md-account
+                color: "#4ade80"
+                font.family: root.bar ? root.bar.fontFamily : "monospace"
+                font.pixelSize: Style.font.body
+              }
             }
 
             Column {
@@ -253,6 +280,7 @@ BarWidget {
                 color: card.fg
                 font.family: root.bar ? root.bar.fontFamily : "monospace"
                 font.pixelSize: Style.font.body
+                font.bold: true
                 elide: Text.ElideRight
               }
 
@@ -265,6 +293,27 @@ BarWidget {
                 font.family: root.bar ? root.bar.fontFamily : "monospace"
                 font.pixelSize: Style.font.caption
                 elide: Text.ElideRight
+              }
+            }
+
+            // ACTIVE badge pill
+            Rectangle {
+              Layout.alignment: Qt.AlignVCenter
+              implicitWidth: activeBadgeText.implicitWidth + Style.space(12)
+              implicitHeight: Style.space(20)
+              radius: Style.space(10)
+              color: Qt.rgba(0.2, 0.8, 0.4, 0.18)
+              border.width: 1
+              border.color: "#4ade80"
+
+              Text {
+                id: activeBadgeText
+                anchors.centerIn: parent
+                text: "● ACTIVE"
+                color: "#4ade80"
+                font.family: root.bar ? root.bar.fontFamily : "monospace"
+                font.pixelSize: Style.font.caption - 1
+                font.bold: true
               }
             }
           }
@@ -288,6 +337,16 @@ BarWidget {
         visible: root.accounts.length > 0
         spacing: Style.space(6)
 
+        Text {
+          width: parent.width
+          text: "SWITCH ACCOUNT (" + root.accounts.length + ")"
+          color: card.dim
+          font.family: root.bar ? root.bar.fontFamily : "monospace"
+          font.pixelSize: Style.font.caption
+          font.bold: true
+          font.letterSpacing: 1.1
+        }
+
         Repeater {
           model: root.accounts
 
@@ -296,7 +355,7 @@ BarWidget {
             width: parent.width
             label: modelData.label
             accountName: modelData.name
-            active: root.currentLabel !== "" && root.currentLabel === modelData.label
+            active: root.currentLabel !== "" ? root.currentLabel === modelData.label : root.currentName === modelData.name
             onClicked: root.switchTo(modelData)
           }
         }
@@ -313,10 +372,42 @@ BarWidget {
         wrapMode: Text.WordWrap
       }
 
-      AccountButton {
+      // Add Account button with + icon
+      Rectangle {
         width: parent.width
-        label: "Add Account"
-        onClicked: { if (root.bar) root.bar.run("omarchy-launch-editor " + Util.shellQuote(root.accountsPath)) }
+        implicitHeight: Style.space(36)
+        radius: Style.cornerRadius
+        color: addHoverArea.containsMouse ? Style.hoverFill : "transparent"
+        border.width: 1
+        border.color: Qt.rgba(card.fg.r, card.fg.g, card.fg.b, 0.2)
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.leftMargin: Style.space(12)
+          anchors.rightMargin: Style.space(12)
+          spacing: Style.space(8)
+
+          Text {
+            text: "+"
+            color: card.fg
+            font.bold: true
+            font.pixelSize: Style.font.body
+          }
+
+          Text {
+            Layout.fillWidth: true
+            text: "Add Account"
+            color: card.fg
+            font.family: root.bar ? root.bar.fontFamily : "monospace"
+            font.pixelSize: Style.font.bodySmall
+          }
+        }
+
+        HoverHandler { id: addHoverArea }
+        MouseArea {
+          anchors.fill: parent
+          onClicked: { if (root.bar) root.bar.run("omarchy-launch-editor " + Util.shellQuote(root.accountsPath)) }
+        }
       }
     }
   }
@@ -328,11 +419,11 @@ BarWidget {
     property bool active: false
     signal clicked()
 
-    implicitHeight: Math.max(38, nameText.implicitHeight + Style.space(16))
+    implicitHeight: Math.max(40, nameText.implicitHeight + Style.space(16))
     radius: Style.cornerRadius
-    color: active ? Style.selectedAccentFill : (hoverArea.containsMouse ? Style.hoverFill : "transparent")
-    border.width: Style.spacing.hairline
-    border.color: active ? "transparent" : Style.normalBorderColor
+    color: active ? Qt.rgba(0.2, 0.8, 0.4, 0.12) : (hoverArea.containsMouse ? Style.hoverFill : "transparent")
+    border.width: 1
+    border.color: active ? "#4ade80" : (hoverArea.containsMouse ? Qt.rgba(card.fg.r, card.fg.g, card.fg.b, 0.2) : "transparent")
 
     RowLayout {
       anchors.fill: parent
@@ -340,23 +431,13 @@ BarWidget {
       anchors.rightMargin: Style.space(12)
       anchors.topMargin: Style.space(6)
       anchors.bottomMargin: Style.space(6)
-      spacing: Style.space(8)
-
-      // green dot marks the active account (opacity keeps alignment stable)
-      Rectangle {
-        Layout.alignment: Qt.AlignVCenter
-        Layout.preferredWidth: Style.space(8)
-        Layout.preferredHeight: Style.space(8)
-        radius: Style.space(4)
-        color: "#4ade80"
-        opacity: parent.parent.active ? 1 : 0
-      }
+      spacing: Style.space(10)
 
       // account icon
       Text {
         Layout.alignment: Qt.AlignVCenter
-        text: "\uDB80\uDC04" // md-account (U+F0004)
-        color: card.dim
+        text: "\uDB80\uDC04" // md-account
+        color: active ? "#4ade80" : card.dim
         font.family: root.bar ? root.bar.fontFamily : "monospace"
         font.pixelSize: Style.font.heading
       }
@@ -368,10 +449,20 @@ BarWidget {
         text: (parent.parent.label !== "" ? parent.parent.label : parent.parent.accountName)
           + (parent.parent.label !== "" && parent.parent.accountName !== ""
             ? " (" + parent.parent.accountName + ")" : "")
-        color: card.fg
+        color: parent.parent.active ? "#4ade80" : card.fg
         font.family: root.bar ? root.bar.fontFamily : "monospace"
         font.pixelSize: Style.font.body
+        font.bold: parent.parent.active
         elide: Text.ElideRight
+      }
+
+      // Checkmark for active account in list
+      Text {
+        visible: parent.parent.active
+        text: "✓"
+        color: "#4ade80"
+        font.bold: true
+        font.pixelSize: Style.font.body
       }
     }
 
