@@ -15,14 +15,13 @@ BarWidget {
   moduleName: "syntaxboybe.git-switcher"
 
   property string accountsPath: Quickshell.env("HOME") + "/.config/omarchy/git-switcher.json"
+  property int maxConfigBytes: 65536
+  property int maxAccounts: 64
+  property int maxFieldLength: 256
   property var accounts: []
   property string currentName: ""
   property string currentEmail: ""
   property string currentLabel: ""
-  property string currentVersion: "1.0.0"
-  property string remoteVersion: ""
-  property bool updateAvailable: false
-  property bool isUpdating: false
 
   // Panel lifecycle contract for shell summon/hide/toggle routing.
   readonly property bool opened: card.open
@@ -36,41 +35,79 @@ BarWidget {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  function checkForUpdates() {
-    if (!updateCheckProc.running) updateCheckProc.running = true
-  }
-
-  function triggerUpdate() {
-    if (!updateProc.running) {
-      root.isUpdating = true
-      updateProc.running = true
-    }
-  }
-
   // ----- accounts (config file) -----
   function loadAccounts() {
     accountsProc.running = true
   }
 
+  function utf8ByteLength(value) {
+    var bytes = 0
+    for (var i = 0; i < value.length; i++) {
+      var code = value.charCodeAt(i)
+      if (code >= 0xD800 && code <= 0xDBFF && i + 1 < value.length) {
+        var low = value.charCodeAt(i + 1)
+        if (low >= 0xDC00 && low <= 0xDFFF) {
+          code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00)
+          i++
+        }
+      }
+      if (code <= 0x7F) bytes += 1
+      else if (code <= 0x7FF) bytes += 2
+      else if (code <= 0xFFFF) bytes += 3
+      else bytes += 4
+      if (bytes > root.maxConfigBytes) return bytes
+    }
+    return bytes
+  }
+
   function parseAccounts(raw) {
     var list = []
-    var text = String(raw || "").trim()
-    if (text !== "") {
-      try {
-        var data = JSON.parse(text)
-        if (data && Array.isArray(data.accounts)) {
-          for (var i = 0; i < data.accounts.length; i++) {
-            var a = data.accounts[i] || {}
-            list.push({
-              label: String(a.label || a.name || ""),
-              name: String(a.name || ""),
-              email: String(a.email || "")
-            })
+    var rawText = String(raw || "")
+    var text = rawText.trim()
+    if (utf8ByteLength(rawText) > root.maxConfigBytes || text === "") {
+      root.accounts = list
+      root.matchActive()
+      return
+    }
+
+    try {
+      var data = JSON.parse(text)
+      if (!data || !Array.isArray(data.accounts) || data.accounts.length > root.maxAccounts) {
+        root.accounts = list
+        root.matchActive()
+        return
+      }
+
+      for (var i = 0; i < data.accounts.length; i++) {
+        var a = data.accounts[i]
+        if (!a || typeof a !== "object" || Array.isArray(a)) {
+          list = []
+          break
+        }
+
+        var fields = ["label", "name", "email"]
+        var valid = true
+        for (var j = 0; j < fields.length; j++) {
+          var field = fields[j]
+          if (a[field] !== undefined
+              && (typeof a[field] !== "string" || a[field].length > root.maxFieldLength)) {
+            valid = false
+            break
           }
         }
-      } catch (e) {
-        list = []
+        if (!valid) {
+          list = []
+          break
+        }
+
+        list.push({
+          label: a.label || a.name || "",
+          name: a.name || "",
+          email: a.email || ""
+        })
       }
+    } catch (e) {
+      list = []
     }
     root.accounts = list
     root.matchActive()
@@ -80,7 +117,6 @@ BarWidget {
   function refresh() {
     root.loadAccounts()
     identityProc.running = true
-    root.checkForUpdates()
   }
 
   function matchActive() {
@@ -130,48 +166,13 @@ BarWidget {
   // ----- accounts reader -----
   Process {
     id: accountsProc
-    command: ["cat", root.accountsPath]
+    command: ["head", "-c", String(root.maxConfigBytes + 1), "--", root.accountsPath]
     stdout: StdioCollector {
       id: accountsOut
       waitForEnd: true
     }
     onExited: function(exitCode, exitStatus) {
       root.parseAccounts(accountsOut.text)
-    }
-  }
-
-  // ----- update processes -----
-  Process {
-    id: updateCheckProc
-    command: ["curl", "-s", "-m", "5", "https://raw.githubusercontent.com/syntaxboybe/omarchy-git-switcher/main/manifest.json"]
-    stdout: StdioCollector {
-      id: checkOut
-      waitForEnd: true
-    }
-    onExited: function(code) {
-      if (code === 0 && checkOut.text.trim() !== "") {
-        try {
-          var data = JSON.parse(checkOut.text)
-          if (data && data.version) {
-            root.remoteVersion = String(data.version).trim()
-            if (root.remoteVersion !== "" && root.remoteVersion !== root.currentVersion) {
-              root.updateAvailable = true
-            }
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: updateProc
-    command: ["omarchy", "plugin", "update", "syntaxboybe.git-switcher", "--yes"]
-    onExited: function(code) {
-      root.isUpdating = false
-      if (code === 0) {
-        root.updateAvailable = false
-        if (root.bar) root.bar.run("omarchy restart shell")
-      }
     }
   }
 
@@ -260,72 +261,6 @@ BarWidget {
             font.family: root.bar ? root.bar.fontFamily : "monospace"
             font.pixelSize: Style.font.caption - 1
             font.bold: true
-          }
-        }
-      }
-
-      // update awareness banner
-      Rectangle {
-        width: parent.width
-        visible: root.updateAvailable
-        implicitHeight: Style.space(42)
-        radius: Style.cornerRadius
-        color: Qt.rgba(0.95, 0.6, 0.1, 0.15)
-        border.width: 1
-        border.color: "#f59e0b"
-
-        RowLayout {
-          anchors.fill: parent
-          anchors.leftMargin: Style.space(12)
-          anchors.rightMargin: Style.space(12)
-          spacing: Style.space(8)
-
-          Text {
-            text: "🚀"
-            font.pixelSize: Style.font.body
-          }
-
-          Column {
-            Layout.fillWidth: true
-            spacing: Style.space(1)
-
-            Text {
-              text: "Update Available: v" + root.remoteVersion
-              color: "#fbbf24"
-              font.family: root.bar ? root.bar.fontFamily : "monospace"
-              font.pixelSize: Style.font.bodySmall
-              font.bold: true
-            }
-
-            Text {
-              text: "Current: v" + root.currentVersion
-              color: card.dim
-              font.family: root.bar ? root.bar.fontFamily : "monospace"
-              font.pixelSize: Style.font.caption
-            }
-          }
-
-          Rectangle {
-            implicitWidth: updateBtnText.implicitWidth + Style.space(16)
-            implicitHeight: Style.space(26)
-            radius: Style.space(6)
-            color: updateHover.containsMouse ? "#d97706" : "#f59e0b"
-
-            Text {
-              id: updateBtnText
-              anchors.centerIn: parent
-              text: root.isUpdating ? "Updating..." : "Update Now"
-              color: "#ffffff"
-              font.family: root.bar ? root.bar.fontFamily : "monospace"
-              font.pixelSize: Style.font.caption
-              font.bold: true
-            }
-
-            HoverHandler { id: updateHover }
-            MouseArea {
-              anchors.fill: parent
-              onClicked: root.triggerUpdate()
-            }
           }
         }
       }
